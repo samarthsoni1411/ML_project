@@ -1,4 +1,10 @@
 # pages/5_⚖️_Model_Bias.py
+import sys, os
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+from utils.ui_helpers import load_css
+load_css()
 import streamlit as st
 from utils.bias_metrics import demographic_parity, equal_opportunity, predictive_parity
 from utils.visualizations import radar_plot

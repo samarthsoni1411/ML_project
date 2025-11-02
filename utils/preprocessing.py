@@ -1,4 +1,3 @@
-# utils/preprocessing.py
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
@@ -6,7 +5,6 @@ from sklearn.preprocessing import LabelEncoder
 import logging
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
-
 
 # --------------------------------------------------------------------
 # 1️⃣ File Reading
@@ -28,7 +26,6 @@ def safe_read_df(uploaded_file):
         logging.error(f"❌ Failed to read dataset: {e}")
         raise
 
-
 # --------------------------------------------------------------------
 # 2️⃣ Missing Value Handling
 # --------------------------------------------------------------------
@@ -49,31 +46,58 @@ def drop_high_missing(df, threshold=0.4):
 
 def simple_impute(df, strategy="most_frequent"):
     """
-    Impute missing values for all columns.
-    Attempts to preserve column types.
+    Smart imputation for mixed-type DataFrames.
+    - Numeric columns: mean/median/most_frequent
+    - Categorical columns: most_frequent only
+    - Boolean columns: converted to integers (0/1)
+    - Safely handles strings, NaN, ?, and missing values.
     """
     if df.empty:
         return df
 
-    try:
-        imputer = SimpleImputer(strategy=strategy)
-        imputed = imputer.fit_transform(df)
-        df_imputed = pd.DataFrame(imputed, columns=df.columns)
+    df_copy = df.copy()
 
-        # Try converting numeric-looking columns
-        for col in df_imputed.columns:
+    # Replace "?" or empty strings with NaN
+    df_copy = df_copy.replace(["?", ""], np.nan)
+
+    # Convert boolean columns → integers
+    bool_cols = df_copy.select_dtypes(include=["bool"]).columns.tolist()
+    if bool_cols:
+        df_copy[bool_cols] = df_copy[bool_cols].astype(int)
+        logging.info(f"Converted {len(bool_cols)} boolean column(s) to numeric for imputation.")
+
+    # Separate numeric and categorical columns
+    num_cols = df_copy.select_dtypes(include=[np.number]).columns.tolist()
+    cat_cols = df_copy.select_dtypes(exclude=[np.number]).columns.tolist()
+
+    try:
+        # --- Numeric Imputation ---
+        if num_cols:
+            num_strategy = strategy if strategy in ["mean", "median", "most_frequent"] else "most_frequent"
+            num_imputer = SimpleImputer(strategy=num_strategy)
+            df_copy[num_cols] = num_imputer.fit_transform(df_copy[num_cols])
+
+        # --- Categorical Imputation ---
+        if cat_cols:
+            cat_imputer = SimpleImputer(strategy="most_frequent")
+            df_copy[cat_cols] = cat_imputer.fit_transform(df_copy[cat_cols])
+
+        # Try numeric conversion where possible
+        for col in df_copy.columns:
             try:
-                df_imputed[col] = pd.to_numeric(df_imputed[col])
+                df_copy[col] = pd.to_numeric(df_copy[col])
             except Exception:
                 pass
 
-        logging.info(f"Imputation successful using strategy='{strategy}'.")
-        return df_imputed
+        logging.info(
+            f"✅ Imputation complete | Strategy='{strategy}' | "
+            f"Numeric: {len(num_cols)} | Categorical: {len(cat_cols)} | Boolean: {len(bool_cols)}"
+        )
+        return df_copy
 
     except Exception as e:
-        logging.error(f"Imputation failed: {e}")
+        logging.error(f"❌ Smart imputation failed: {e}")
         raise
-
 
 # --------------------------------------------------------------------
 # 3️⃣ Encoding Utilities
@@ -116,7 +140,6 @@ def encode_sensitive(df, sensitive_col):
     except Exception as e:
         logging.error(f"Sensitive feature encoding failed: {e}")
         raise
-
 
 # --------------------------------------------------------------------
 # 4️⃣ Utility Helpers

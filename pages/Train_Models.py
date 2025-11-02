@@ -1,4 +1,10 @@
 # pages/4_🤖_Train_Models.py
+import sys, os
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+from utils.ui_helpers import load_css
+load_css()
 import streamlit as st
 import pandas as pd
 import numpy as np
