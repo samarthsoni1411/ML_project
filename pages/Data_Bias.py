@@ -1,4 +1,13 @@
 # pages/3_📊_Data_Bias.py
+import sys, os
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+
+from utils.ui_helpers import load_css
+load_css()
+
 import streamlit as st
 from utils.bias_metrics import calc_spd_binary, calc_di_binary, calc_mutual_info
 from utils.visualizations import bias_heatmap
